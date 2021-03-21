@@ -1,0 +1,92 @@
+﻿using Prism.Mvvm;
+using Reactive.Bindings;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Timers;
+using System.Windows.Forms;
+using System.Windows.Input;
+using System.Windows.Interop;
+using System.Windows.Threading;
+using UmaTools.Models;
+
+namespace UmaTools.ViewModels
+{
+    public class MainWindowViewModel : BindableBase
+    {
+        private string _title = "UmaTools";
+        public string Title { 
+            get { return _title; }
+            set { SetProperty(ref _title, value); }
+        }
+
+        // Contoller
+        private ProcessCollecter ProcessCollecter = new ProcessCollecter();
+        private CaptureWindow CaptureWindow = new CaptureWindow();
+
+        // view data source
+        private ObservableCollection<Item> Source { get; }
+        public ReadOnlyReactiveCollection<ItemViewModel> Items { get; }
+        public ReactivePropertySlim<ItemViewModel> SelectedItem { get; }
+
+        public ReactiveProperty<string> PathOfScreencapture { get; private set; }
+        public ReactiveCommand CommitCommand { get; }
+
+        // view data source
+        static private int SelectedItemId = new int();
+        static private int CaptureCount = 0;
+
+        // view data source
+
+        public MainWindowViewModel()
+        {
+             //コンボボックスの初期化
+            Source = new ObservableCollection<Item>(ProcessCollecter.collect().Select(x => new Item(x.ProcessName, x.ProcessId)));
+            Items = Source.ToReadOnlyReactiveCollection(x => new ItemViewModel(x));
+            SelectedItem = new ReactivePropertySlim<ItemViewModel>(Items.First());
+
+            SelectedItem.Subscribe(x =>
+            {
+                var res = Source.Where(y => y.Name.Value == x.Name.Value).ToList();
+                if (res.Count > 0)
+                {
+                    System.Diagnostics.Process p = System.Diagnostics.Process.GetCurrentProcess();
+                    SelectedItemId = res[0].Id.Value;
+                }
+            });
+
+            //スクリーンキャプチャ保存先
+            PathOfScreencapture = new ReactiveProperty<string>();
+
+            //キャプチャボタン
+            CommitCommand = new ReactiveCommand();
+            CommitCommand.Subscribe(_=> hookCapture(null,null));
+        }
+        
+        //
+        public void hookCapture(object sender, EventArgs e)
+        {
+            try
+            {
+                string dpath = PathOfScreencapture.Value;
+                if (string.IsNullOrEmpty(dpath))
+                {
+                    return;
+                }
+
+                DateTime dt = DateTime.Now;
+                string result = dt.ToString("yyyyMMdd_HHmmss");
+                string path = $"{dpath}\\{result}_{CaptureCount}.png"; 
+                
+                CaptureWindow.Capture(SelectedItemId, path);
+                ++CaptureCount;
+            }
+            catch
+            {
+
+            }
+        }
+    }
+}
