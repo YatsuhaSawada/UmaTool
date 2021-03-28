@@ -32,17 +32,20 @@ namespace UmaTools.ViewModels
         public ReactivePropertySlim<ItemViewModel> SelectedItem { get; }
 
         public ReactiveProperty<string> PathOfScreencapture { get; private set; }
-        public ReactiveCommand CommitCommand { get; }
+        public ReactiveCommand CaptureCommand { get; }
+        public ReactiveCommand SaveCommand { get; }
+        public ReactiveCommand LoadedCommand { get; }
 
         // view data source
         static private int SelectedItemId = new int();
+        static private string SelectedItemName = "";
         static private int CaptureCount = 0;
 
         // view data source
 
         public MainWindowViewModel()
         {
-             //コンボボックスの初期化
+            //コンボボックスの初期化
             Source = new ObservableCollection<Item>(ProcessCollecter.collect().Select(x => new Item(x.ProcessName, x.ProcessId)));
             Items = Source.ToReadOnlyReactiveCollection(x => new ItemViewModel(x));
             SelectedItem = new ReactivePropertySlim<ItemViewModel>(Items.First());
@@ -54,6 +57,7 @@ namespace UmaTools.ViewModels
                 {
                     System.Diagnostics.Process p = System.Diagnostics.Process.GetCurrentProcess();
                     SelectedItemId = res[0].Id.Value;
+                    SelectedItemName = res[0].Name.Value;
                 }
             });
 
@@ -61,8 +65,33 @@ namespace UmaTools.ViewModels
             PathOfScreencapture = new ReactiveProperty<string>();
 
             //キャプチャボタン
-            CommitCommand = new ReactiveCommand();
-            CommitCommand.Subscribe(_=> hookCapture(null,null));
+            CaptureCommand = new ReactiveCommand();
+            CaptureCommand.Subscribe(_ => hookCapture(null, null));
+
+            //セーブコマンド
+            SaveCommand = new ReactiveCommand();
+            SaveCommand.Subscribe(_ => saveSetting());
+
+            //
+            LoadedCommand = new ReactiveCommand();
+            LoadedCommand.Subscribe(_ => setupdata());            
+        }
+
+        //
+        public void setupdata()
+        {
+            var loaded = DataAccessor.load();
+            if (!loaded.res)
+            {
+                return;
+            }
+
+            var res = Items.Where(x => x.Name.Value == loaded.data.ProcessName).ToList();
+            if (res.Count != 0)
+            {
+                SelectedItem.Value = res[0];
+            }
+            PathOfScreencapture.Value = loaded.data.FolderPath;
         }
         
         //
@@ -87,6 +116,17 @@ namespace UmaTools.ViewModels
             {
 
             }
+        }
+
+        //
+        public void saveSetting()
+        {
+            Setting setting = new Setting
+            {
+                ProcessName = SelectedItemName,
+                FolderPath  = PathOfScreencapture.Value
+            };
+            DataAccessor.save(setting);
         }
     }
 }
