@@ -12,7 +12,9 @@
         TextOptions.TextRenderingMode="Auto"
         Background="{DynamicResource MaterialDesignPaper}"
         FontFamily="{DynamicResource MaterialDesignFont}"
-        Title="{Binding Title}" Height="146.133" Width="519.4">
+        Title="{Binding Title}"
+        Height="146.133"
+        Width="519.4">
     <Window.DataContext>
         <local:MainWindowViewModel />
     </Window.DataContext>
